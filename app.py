@@ -15,6 +15,60 @@ def init_connection():
 
 supabase: Client = init_connection()
 
+def login(email, password):
+    try:
+        res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+        st.session_state.user = res.user
+        st.rerun() # Refresca la página tras el login
+    except Exception as e:
+        st.error("Error al iniciar sesión. Revisa tus credenciales.")
+
+def registrar(email, password, nombre):
+    try:
+        res = supabase.auth.sign_up({"email": email, "password": password})
+        if res.user:
+            # Enlazamos el UUID de Auth con nuestra tabla pública
+            supabase.table("perfiles_fercitas").insert({
+                "id": res.user.id,
+                "nombre": nombre,
+                "email": email
+            }).execute()
+            st.success("Cuenta creada exitosamente. Por favor, inicia sesión.")
+    except Exception as e:
+        st.error("Hubo un error al crear la cuenta.")
+
+# Flujo de pantalla
+if st.session_state.user is None:
+    tab_login, tab_registro = st.tabs(["Iniciar Sesión", "Crear Cuenta"])
+    
+    with tab_login:
+        with st.form("form_login"):
+            email_login = st.text_input("Correo electrónico")
+            pass_login = st.text_input("Contraseña", type="password")
+            if st.form_submit_button("Entrar"):
+                login(email_login, pass_login)
+                
+    with tab_registro:
+        with st.form("form_registro"):
+            nombre_reg = st.text_input("Tu Nombre Completo")
+            email_reg = st.text_input("Correo electrónico")
+            pass_reg = st.text_input("Contraseña", type="password")
+            if st.form_submit_button("Registrarse"):
+                registrar(email_reg, pass_reg, nombre_reg)
+
+else:
+    # AQUI VA TODO EL CODIGO DEL CALENDARIO Y GESTIÓN
+    st.write(f"Bienvenido a Fercitas, usuario ID: {st.session_state.user.id}")
+    
+    if st.button("Cerrar Sesión"):
+        supabase.auth.sign_out()
+        st.session_state.user = None
+        st.rerun()
+
+# Inicializar variable de sesión
+if 'user' not in st.session_state:
+    st.session_state.user = None
+    
 tab1, tab2 = st.tabs(["Solicitar Cita", "Gestión de Citas (Citado)"])
 
 with tab1:
@@ -71,7 +125,7 @@ with tab1:
                 fecha_fin = (fecha_dt + timedelta(days=1)).replace(hour=23, minute=59, second=59).isoformat()
     
                 # ID temporal para pruebas (luego lo conectaremos al perfil real seleccionado)
-                citado_id_actual = "ID_DEL_USUARIO_AL_QUE_SE_CITA" 
+                citado_id_actual = "st.session_state.user.id." 
     
                 # 2. Consultar a Supabase si hay citas aceptadas en esa ventana de 3 días
                 respuesta = supabase.table("citas_fercitas").select("id") \
@@ -86,7 +140,7 @@ with tab1:
                     st.error("❌ No es posible agendar. Esta persona ya tiene una cita confirmada para este día, el día anterior o el siguiente.")
                 else:
                     nueva_cita = {
-                        "solicitante_id": "TU_ID_COMO_SOLICITANTE", 
+                        "solicitante_id": "st.session_state.user.id.", 
                         "citado_id": citado_id_actual,
                         "fecha_hora": fecha_iso,
                         "itinerario": st.session_state.itinerario,
@@ -99,7 +153,7 @@ with tab2:
     st.markdown("### Solicitudes Entrantes")
     
     # ID temporal para pruebas (simulando que tú iniciaste sesión y ves lo que te enviaron)
-    mi_id_como_citado = "ID_DEL_USUARIO_AL_QUE_SE_CITA"
+    mi_id_como_citado = "st.session_state.user.id."
 
     # Traer solicitudes pendientes de Supabase
     pendientes = supabase.table("citas_fercitas") \
