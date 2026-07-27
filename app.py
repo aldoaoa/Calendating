@@ -48,7 +48,8 @@ def registrar(email, password, nombre):
             }).execute()
             st.success("Cuenta creada exitosamente. Por favor, inicia sesión.")
     except Exception as e:
-        st.error("Hubo un error al crear la cuenta.")
+        # Esto te dirá exactamente qué falló en la base de datos
+        st.error(f"Error detallado al crear la cuenta: {str(e)}")
 
 # 3. Flujo de pantalla principal
 if st.session_state.user is None:
