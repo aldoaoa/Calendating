@@ -101,21 +101,30 @@ else:
                 "right": "timeGridWeek,timeGridDay"
             },
             "initialView": "timeGridWeek",
-            "slotMinTime": "18:00:00", 
+            "slotMinTime": "00:00:00", # Abrimos la cuadrícula completa para que quepan los fines de semana
             "slotMaxTime": "24:00:00",
             "selectable": True,
             "allDaySlot": False,
-            
-            # --- NUEVOS PARÁMETROS ---
-            # 1. Congela la zona horaria para evitar el desfase de 6 horas
             "timeZone": "UTC", 
-            
-            # 2. Elimina el espacio gigante en la última celda
             "height": "auto",
             "expandRows": False,
+            "eventColor": "#D4002B",
             
-            # 3. Formato visual corporativo
-            "eventColor": "#D4002B" 
+            # --- REGLAS DE HORARIO MÚLTIPLE ---
+            "businessHours": [
+                {
+                    "daysOfWeek": [1, 2, 3, 4, 5], # Lunes a Viernes
+                    "startTime": "18:00",
+                    "endTime": "24:00"
+                },
+                {
+                    "daysOfWeek": [0, 6], # Domingo (0) y Sábado (6)
+                    "startTime": "00:00",
+                    "endTime": "24:00"
+                }
+            ],
+            # selectConstraint fuerza a que el usuario solo pueda hacer clic dentro de businessHours
+            "selectConstraint": "businessHours" 
         }
         
         events = [] 
