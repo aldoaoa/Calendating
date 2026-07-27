@@ -6,8 +6,20 @@ from ics import Calendar, Event
 
 st.set_page_config(page_title="Fercitas", page_icon="📅", layout="wide")
 
+# --- ENCABEZADO CON LOGOTIPO ---
+# Usamos 3 columnas y ponemos la imagen en la de en medio para centrarla
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    try:
+        # Ajusta el nombre del archivo si es diferente
+        st.image("logo.png", use_column_width=True) 
+    except FileNotFoundError:
+        # Texto de respaldo en caso de que la imagen no cargue
+        st.markdown("<h1 style='text-align: center; color: #D4002B;'>Fercitas</h1>", unsafe_allow_html=True)
+
 # 1. INICIALIZAR SESIÓN (Debe ir antes de cualquier validación)
 if 'user' not in st.session_state:
+# ... resto de tu código ...
     st.session_state.user = None
 
 # 2. Conexión a Supabase
