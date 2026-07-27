@@ -92,80 +92,55 @@ else:
         else:
             opciones_usuarios = {user["nombre"]: user["id"] for user in respuesta_usuarios.data}
             usuario_seleccionado = st.selectbox("¿A quién quieres citar?", options=list(opciones_usuarios.keys()))
-        
-        # 2. Configuración del calendario moderno
-        calendar_options = {
-            "headerToolbar": {
-                "left": "today prev,next",
-                "center": "title",
-                "right": "timeGridWeek,timeGridDay"
-            },
-            "initialView": "timeGridWeek",
-            "slotMinTime": "07:00:00", # Abrimos la cuadrícula completa para que quepan los fines de semana
-            "slotMaxTime": "24:00:00",
-            "selectable": True,
-            "allDaySlot": False,
-            "timeZone": "UTC", 
-            "height": "auto",
-            "expandRows": False,
-            "eventColor": "#D4002B",
             
-            # --- REGLAS DE HORARIO MÚLTIPLE ---
-            "businessHours": [
-                {
-                    "daysOfWeek": [1, 2, 3, 4, 5], # Lunes a Viernes
-                    "startTime": "18:00",
-                    "endTime": "24:00"
-                },
-                {
-                    "daysOfWeek": [0, 6], # Domingo (0) y Sábado (6)
-                    "startTime": "07:00",
-                    "endTime": "24:00"
-                }
-            ],
-            # selectConstraint fuerza a que el usuario solo pueda hacer clic dentro de businessHours
-            "selectConstraint": "businessHours" 
-        }
-        
-        events = [] 
-        cal = calendar(events=events, options=calendar_options, key="calendario_fercitas")
-        
-        if cal.get("dateClick"):
-            fecha_iso = cal["dateClick"]["date"]
-            fecha_dt = datetime.fromisoformat(fecha_iso.replace('Z', '+00:00'))
+            # --- SELECCIÓN COMPACTA DE FECHA Y HORA ---
+            col_fecha, col_hora = st.columns(2)
+            with col_fecha:
+                fecha_seleccionada = st.date_input("Fecha de la cita")
+            with col_hora:
+                hora_seleccionada = st.time_input("Hora de la cita")
             
-            st.info(f"Iniciando solicitud para: {fecha_dt.strftime('%Y-%m-%d %H:%M')}")
+            # Convertimos las selecciones a datetime y formato ISO
+            fecha_dt = datetime.combine(fecha_seleccionada, hora_seleccionada)
+            fecha_iso = fecha_dt.isoformat()
             
             with st.form("form_cita"):
                 st.text_area("Itinerario de la cita:", key="itinerario")
                 submit = st.form_submit_button("Enviar Solicitud")
         
                 if submit:
-                    fecha_inicio = (fecha_dt - timedelta(days=1)).replace(hour=0, minute=0, second=0).isoformat()
-                    fecha_fin = (fecha_dt + timedelta(days=1)).replace(hour=23, minute=59, second=59).isoformat()
-        
-                    # Usar el ID real del usuario seleccionado en el menú
-                    citado_id_actual = opciones_usuarios[usuario_seleccionado]
-        
-                    respuesta = supabase.table("citas_fercitas").select("id") \
-                        .eq("citado_id", citado_id_actual) \
-                        .eq("estado", "aceptada") \
-                        .gte("fecha_hora", fecha_inicio) \
-                        .lte("fecha_hora", fecha_fin) \
-                        .execute()
-        
-                    if len(respuesta.data) > 0:
-                        st.error("❌ No es posible agendar. Esta persona ya tiene una cita confirmada para este día, el día anterior o el siguiente.")
+                    # 1. Validar la regla de Lunes a Viernes después de las 6pm
+                    es_entre_semana = fecha_dt.weekday() < 5
+                    
+                    if es_entre_semana and fecha_dt.hour < 18:
+                        st.error("❌ Las citas de Lunes a Viernes solo pueden agendarse de las 18:00 hrs en adelante.")
                     else:
-                        nueva_cita = {
-                            "solicitante_id": st.session_state.user.id, # Variable real sin comillas
-                            "citado_id": citado_id_actual,
-                            "fecha_hora": fecha_iso,
-                            "itinerario": st.session_state.itinerario,
-                            "estado": "pendiente"
-                        }
-                        supabase.table("citas_fercitas").insert(nueva_cita).execute()
-                        st.success("✅ Solicitud enviada correctamente. Esperando confirmación.")
+                        # 2. Validar la regla de los 2 días consecutivos
+                        fecha_inicio = (fecha_dt - timedelta(days=1)).replace(hour=0, minute=0, second=0).isoformat()
+                        fecha_fin = (fecha_dt + timedelta(days=1)).replace(hour=23, minute=59, second=59).isoformat()
+            
+                        citado_id_actual = opciones_usuarios[usuario_seleccionado]
+            
+                        respuesta = supabase.table("citas_fercitas").select("id") \
+                            .eq("citado_id", citado_id_actual) \
+                            .eq("estado", "aceptada") \
+                            .gte("fecha_hora", fecha_inicio) \
+                            .lte("fecha_hora", fecha_fin) \
+                            .execute()
+            
+                        if len(respuesta.data) > 0:
+                            st.error("❌ No es posible agendar. Esta persona ya tiene una cita confirmada para este día, el día anterior o el siguiente.")
+                        else:
+                            # 3. Insertar la solicitud
+                            nueva_cita = {
+                                "solicitante_id": st.session_state.user.id, 
+                                "citado_id": citado_id_actual,
+                                "fecha_hora": fecha_iso,
+                                "itinerario": st.session_state.itinerario,
+                                "estado": "pendiente"
+                            }
+                            supabase.table("citas_fercitas").insert(nueva_cita).execute()
+                            st.success("✅ Solicitud enviada correctamente. Esperando confirmación.")
 
     with tab2:
         st.markdown("### Solicitudes Entrantes")
