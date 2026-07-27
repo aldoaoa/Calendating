@@ -71,7 +71,7 @@ if st.session_state.user is None:
 
 else:
     # 4. SISTEMA PROTEGIDO (Todo indentado bajo el 'else')
-    st.write(f"Bienvenido a Fercitas. Tu ID: {st.session_state.user.id}")
+    st.write(f"Bienvenido a Fercitas. Sesión iniciada como: {st.session_state.user.email}")
     
     if st.button("Cerrar Sesión"):
         supabase.auth.sign_out()
@@ -100,7 +100,7 @@ else:
             },
             "initialView": "timeGridWeek",
             "slotMinTime": "18:00:00", 
-            "slotMaxTime": "23:59:00",
+            "slotMaxTime": "24:00:00",
             "selectable": True,
             "allDaySlot": False,
         }
