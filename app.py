@@ -93,6 +93,7 @@ else:
             opciones_usuarios = {user["nombre"]: user["id"] for user in respuesta_usuarios.data}
             usuario_seleccionado = st.selectbox("¿A quién quieres citar?", options=list(opciones_usuarios.keys()))
         
+        # 2. Configuración del calendario moderno
         calendar_options = {
             "headerToolbar": {
                 "left": "today prev,next",
@@ -104,6 +105,17 @@ else:
             "slotMaxTime": "24:00:00",
             "selectable": True,
             "allDaySlot": False,
+            
+            # --- NUEVOS PARÁMETROS ---
+            # 1. Congela la zona horaria para evitar el desfase de 6 horas
+            "timeZone": "UTC", 
+            
+            # 2. Elimina el espacio gigante en la última celda
+            "height": "auto",
+            "expandRows": False,
+            
+            # 3. Formato visual corporativo
+            "eventColor": "#D4002B" 
         }
         
         events = [] 
