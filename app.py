@@ -185,38 +185,54 @@ else:
                             st.warning("Cita rechazada.")
                             st.rerun()
 
-        st.markdown("---")
-        st.markdown("### Mis Citas Confirmadas")
-        
-        aceptadas = supabase.table("citas_fercitas") \
-            .select("*").eq("citado_id", mi_id_como_citado).eq("estado", "aceptada").execute()
-            
-        for cita in aceptadas.data:
-            with st.container():
-                st.write(f"**{cita['fecha_hora'][:10]}** - {cita['itinerario'][:30]}...")
-                
-                ical_data = generar_ical(cita['fecha_hora'], cita['itinerario'])
-                
-                st.download_button(
-                    label="📥 Descargar para mi Calendario (.ical)",
-                    data=ical_data,
-                    file_name=f"Cita_Fercitas_{cita['fecha_hora'][:10]}.ics",
-                    mime="text/calendar",
-                    key=f"dl_{cita['id']}"
-                )
-        st.markdown("---")
-        st.markdown("### Mis Solicitudes Enviadas")
-        
-        # 1. Traer todos los perfiles para mapear el ID al Nombre real
+        # Traer todos los perfiles una sola vez para mapear nombres
         respuesta_nombres = supabase.table("perfiles_fercitas").select("id, nombre").execute()
         nombres_dict = {user["id"]: user["nombre"] for user in respuesta_nombres.data} if respuesta_nombres.data else {}
 
-        # 2. Consultar las citas donde tú eres el solicitante
+        st.markdown("---")
+        st.markdown("### Mis Citas Confirmadas")
+        
+        # 1. Filtro OR: Traer citas aceptadas donde soy el citado O el solicitante
+        filtro_or = f"citado_id.eq.{st.session_state.user.id},solicitante_id.eq.{st.session_state.user.id}"
+        aceptadas = supabase.table("citas_fercitas") \
+            .select("*").or_(filtro_or).eq("estado", "aceptada").order("fecha_hora").execute()
+            
+        if not aceptadas.data:
+            st.info("No tienes citas confirmadas.")
+        else:
+            for cita in aceptadas.data:
+                with st.container():
+                    # Lógica para saber con quién es la junta dependiendo de quién la pidió
+                    if cita['solicitante_id'] == st.session_state.user.id:
+                        con_quien = nombres_dict.get(cita['citado_id'], "Usuario")
+                        rol = "(Tú la solicitaste)"
+                    else:
+                        con_quien = nombres_dict.get(cita['solicitante_id'], "Usuario")
+                        rol = "(Te invitaron)"
+
+                    st.write(f"**{cita['fecha_hora'][:10]}** - Con: **{con_quien}** {rol}")
+                    st.write(f"**Itinerario:** {cita['itinerario']}")
+                    
+                    # Generar el contenido del archivo
+                    ical_data = generar_ical(cita['fecha_hora'], cita['itinerario'])
+                    
+                    st.download_button(
+                        label="📥 Descargar para mi Calendario (.ical)",
+                        data=ical_data,
+                        file_name=f"Cita_Fercitas_{cita['fecha_hora'][:10]}.ics",
+                        mime="text/calendar",
+                        key=f"dl_{cita['id']}"
+                    )
+
+        st.markdown("---")
+        st.markdown("### Mis Solicitudes Enviadas (Sin respuesta o rechazadas)")
+        
+        # 2. Filtro IN: Traer solo lo que yo pedí y que sigue pendiente o fue rechazado
         enviadas = supabase.table("citas_fercitas") \
-            .select("*").eq("solicitante_id", st.session_state.user.id).order("fecha_hora", desc=True).execute()
+            .select("*").eq("solicitante_id", st.session_state.user.id).in_("estado", ["pendiente", "rechazada"]).order("fecha_hora", desc=True).execute()
             
         if not enviadas.data:
-            st.info("No has enviado ninguna solicitud de cita.")
+            st.info("No tienes solicitudes en espera.")
         else:
             for cita in enviadas.data:
                 with st.container(border=True):
@@ -227,11 +243,8 @@ else:
                     st.write(f"**Fecha:** {fecha_dt.strftime('%Y-%m-%d %H:%M')}")
                     st.write(f"**Itinerario:** {cita['itinerario']}")
                     
-                    # 3. Formato visual dependiendo del estatus
                     estado = cita['estado']
                     if estado == 'pendiente':
                         st.warning("⏳ Pendiente de respuesta")
-                    elif estado == 'aceptada':
-                        st.success("✅ Aceptada")
                     elif estado == 'rechazada':
                         st.error("❌ Rechazada")
