@@ -204,3 +204,34 @@ else:
                     mime="text/calendar",
                     key=f"dl_{cita['id']}"
                 )
+        st.markdown("---")
+        st.markdown("### Mis Solicitudes Enviadas")
+        
+        # 1. Traer todos los perfiles para mapear el ID al Nombre real
+        respuesta_nombres = supabase.table("perfiles_fercitas").select("id, nombre").execute()
+        nombres_dict = {user["id"]: user["nombre"] for user in respuesta_nombres.data} if respuesta_nombres.data else {}
+
+        # 2. Consultar las citas donde tú eres el solicitante
+        enviadas = supabase.table("citas_fercitas") \
+            .select("*").eq("solicitante_id", st.session_state.user.id).order("fecha_hora", desc=True).execute()
+            
+        if not enviadas.data:
+            st.info("No has enviado ninguna solicitud de cita.")
+        else:
+            for cita in enviadas.data:
+                with st.container(border=True):
+                    fecha_dt = datetime.fromisoformat(cita['fecha_hora'].replace('Z', '+00:00'))
+                    nombre_citado = nombres_dict.get(cita['citado_id'], "Usuario Desconocido")
+                    
+                    st.write(f"**Para:** {nombre_citado}")
+                    st.write(f"**Fecha:** {fecha_dt.strftime('%Y-%m-%d %H:%M')}")
+                    st.write(f"**Itinerario:** {cita['itinerario']}")
+                    
+                    # 3. Formato visual dependiendo del estatus
+                    estado = cita['estado']
+                    if estado == 'pendiente':
+                        st.warning("⏳ Pendiente de respuesta")
+                    elif estado == 'aceptada':
+                        st.success("✅ Aceptada")
+                    elif estado == 'rechazada':
+                        st.error("❌ Rechazada")
