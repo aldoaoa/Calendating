@@ -101,7 +101,7 @@ else:
                 "right": "timeGridWeek,timeGridDay"
             },
             "initialView": "timeGridWeek",
-            "slotMinTime": "00:00:00", # Abrimos la cuadrícula completa para que quepan los fines de semana
+            "slotMinTime": "07:00:00", # Abrimos la cuadrícula completa para que quepan los fines de semana
             "slotMaxTime": "24:00:00",
             "selectable": True,
             "allDaySlot": False,
@@ -119,7 +119,7 @@ else:
                 },
                 {
                     "daysOfWeek": [0, 6], # Domingo (0) y Sábado (6)
-                    "startTime": "00:00",
+                    "startTime": "07:00",
                     "endTime": "24:00"
                 }
             ],
